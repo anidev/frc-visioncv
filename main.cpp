@@ -12,8 +12,10 @@
 
 bool decorate=true;
 bool procFailed=false;
+bool mjpg=false;
 
 Particle particles[]={Particle(),Particle()}; // outer, inner
+cv::VideoCapture video;
 cv::Mat* image=NULL;
 cv::Mat* binary=NULL;
 cv::Mat* cvtImage=NULL;
@@ -23,12 +25,14 @@ bool filterColor(cv::Vec3b vec) {
     bool pass=true;
     // OpenCV hue is from 0..180
     pass&=(vec[0]>=64&&vec[0]<=85);  // H
-    pass&=(vec[1]>=30&&vec[1]<=140); // L
-    pass&=(vec[2]>=200);             // S
+    pass&=(vec[1]>=35&&vec[1]<=140); // L
+    pass&=(vec[2]>=230);             // S
     return pass;
 }
 
 void filterImage() {
+    particles[0].area=0;
+    particles[1].area=0;
     cvtImage=new cv::Mat(image->size(),image->type(),cv::Scalar(0,0,0));
     binary=new cv::Mat(image->size(),CV_8UC1,cv::Scalar(0));
     preview=new cv::Mat(image->size(),image->type(),cv::Scalar(0,0,0));
@@ -142,8 +146,22 @@ int main(int argc,char* argv[]) {
     srand(time(NULL));
     particles[0].color=randColor();
     particles[1].color=randColor();
-    std::string filename(argv[1]);
-    image=new cv::Mat(cv::imread(filename,1));
+    if(argc>2&&strcmp(argv[1],"--mjpg")==0) {
+        mjpg=true;
+        std::string path(argv[2]);
+        if(!video.open(path)) {
+            std::cerr<<"Failed to open mjpg stream"<<std::endl;
+            return 1;
+        }
+        image=new cv::Mat(240,320,CV_8UC3);
+        if(!video.read(*image)) {
+            std::cerr<<"Failed to read from mjpg stream"<<std::endl;
+            return 1;
+        }
+    } else {
+        std::string filename(argv[1]);
+        image=new cv::Mat(cv::imread(filename,1));
+    }
     filterImage();
     processImage();
     cv::namedWindow("Original image",CV_WINDOW_AUTOSIZE);
@@ -155,16 +173,28 @@ int main(int argc,char* argv[]) {
     cv::imshow("Converted image",*cvtImage);
     cv::setMouseCallback("Converted image",mouse,(void*)cvtImage);*/
     while(true) {
-        int key=cv::waitKey(0);
+        int key=cv::waitKey((mjpg?10:0));
         key&=0xFF;
         if(key=='d') {
             decorate=!decorate;
             renderImage();
+            continue;
         }
         if(key==27) {
             break;
         }
+        if(mjpg) {
+            delete image;
+            image=new cv::Mat(240,320,CV_8UC3);
+            if(!video.read(*image)) {
+                std::cerr<<"Failed to read from mjpg stream"<<std::endl;
+                sleep(1);
+                continue;
+            }
+            filterImage();
+            processImage();
+            renderImage();
+        }
     }
     return 0;
 }
-
