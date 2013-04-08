@@ -1,4 +1,5 @@
 #ifndef PARTICLE_H
+#define PARTICLE_H
 
 #include <vector>
 #include <opencv2/core/core.hpp>

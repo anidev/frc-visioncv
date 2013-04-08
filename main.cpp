@@ -8,7 +8,11 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <networktables/NetworkTable.h>
 #include "particle.h"
+
+#define NTSERVER
+const int teamID=612;
 
 bool decorate=true;
 bool procFailed=false;
@@ -20,6 +24,7 @@ cv::Mat* image=NULL;
 cv::Mat* binary=NULL;
 cv::Mat* cvtImage=NULL;
 cv::Mat* preview=NULL;
+NetworkTable* table=NULL;
 
 bool filterColor(cv::Vec3b vec) {
     bool pass=true;
@@ -81,6 +86,8 @@ void processImage() {
     particles[1].recalcArea();
     std::cout<<"outer area: "<<particles[0].area<<std::endl;
     std::cout<<"inner area: "<<particles[1].area<<std::endl;
+    table->PutNumber("OuterArea",particles[0].area);
+    table->PutNumber("InnerArea",particles[1].area);
 }
 
 void renderImage(cv::Point cursor=cv::Point(-1,-1)) {
@@ -139,6 +146,17 @@ cv::Scalar randColor() {
 }
 
 int main(int argc,char* argv[]) {
+#ifdef NTSERVER
+    NetworkTable::SetIPAddress("127.0.0.1");
+    NetworkTable::Initialize();
+    table=NetworkTable::GetTable("PCVision");
+#else
+    table=null; //TODO NetworkTable client mode
+#endif
+    if(table==NULL) {
+        std::cerr<<"Failed to get NetworkTable"<<std::endl;
+        return 1;
+    }
     if(argc<2) {
         std::cout<<"Usage: "<<argv[0]<<" <picture>"<<std::endl;
         return 0;
