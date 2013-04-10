@@ -26,12 +26,12 @@ cv::Mat* cvtImage=NULL;
 cv::Mat* preview=NULL;
 NetworkTable* table=NULL;
 
-bool filterColor(cv::Vec3b vec) {
+bool filterColor(cv::Vec3b& vec) {
     bool pass=true;
     // OpenCV hue is from 0..180
-    pass&=(vec[0]>=64&&vec[0]<=85);  // H
-    pass&=(vec[1]>=35&&vec[1]<=140); // L
-    pass&=(vec[2]>=230);             // S
+    pass&=(vec[0]>=54&&vec[0]<=78);  // H
+    pass&=(vec[1]>=50&&vec[1]<=130); // L
+    pass&=(vec[2]>=220);             // S
     return pass;
 }
 
@@ -59,6 +59,13 @@ void filterImage() {
     }
 }
 
+bool filterContour(std::vector<cv::Point>& contour) {
+    if(cv::contourArea(contour)<350) {
+        return false;
+    }
+    return true;
+}
+
 void processImage() {
     std::vector<std::vector<cv::Point> > contours;
     cv::findContours(binary->clone(),contours,CV_RETR_CCOMP,CV_CHAIN_APPROX_SIMPLE);
@@ -66,15 +73,23 @@ void processImage() {
     for(unsigned int i=0;i<contours.size();i++) {
         double area=cv::contourArea(contours[i]);
         std::cout<<area<<std::endl;
-        if(area<350) {
+        if(!filterContour(contours[i])) {
+            continue;
+        }
+        std::vector<cv::Point> hull;
+        std::vector<cv::Point> polygon;
+        cv::convexHull(contours[i],hull);
+        cv::approxPolyDP(hull,polygon,5,true);
+        std::cout<<polygon.size()<<std::endl;
+        if(polygon.size()!=4||!filterContour(polygon)) {
             continue;
         }
         num_contours++;
         if(area>particles[0].area) {
             particles[1].points=particles[0].points;
-            particles[0].points=contours[i];
+            particles[0].points=polygon;
         } else {
-            particles[1].points=contours[i];
+            particles[1].points=polygon;
         }
         particles[0].recalcArea();
     }
@@ -185,13 +200,13 @@ int main(int argc,char* argv[]) {
     cv::namedWindow("Original image",CV_WINDOW_AUTOSIZE);
     cv::setMouseCallback("Original image",mouse,(void*)image);
     cv::namedWindow("Preview result",CV_WINDOW_AUTOSIZE);
-    cv::setMouseCallback("Preview result",mouse,(void*)preview);
+    cv::setMouseCallback("Preview result",mouse,(void*)cvtImage);
     renderImage();
 /*    cv::namedWindow("Converted image",CV_WINDOW_AUTOSIZE);
     cv::imshow("Converted image",*cvtImage);
     cv::setMouseCallback("Converted image",mouse,(void*)cvtImage);*/
     while(true) {
-        int key=cv::waitKey((mjpg?10:0));
+        int key=cv::waitKey((mjpg?100:0));
         key&=0xFF;
         if(key=='d') {
             decorate=!decorate;
