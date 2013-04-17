@@ -68,9 +68,9 @@ bool filterContour(std::vector<cv::Point>& contour) {
 }
 
 void processImage() {
-    std::vector<cv::Vec4i> hough;
-    cv::HoughLinesP(*binary,hough,1,CV_PI/180,10,5);
-    particle.points.reserve(hough.size()*2);
+//    std::vector<cv::Vec4i> hough;
+//    cv::HoughLinesP(*binary,hough,1,CV_PI/180,10,5);
+//    particle.points.reserve(hough.size()*2);
 /*    for(unsigned int i=0;i<hough.size();i++) {
         cv::Vec4i& vec=hough[i];
         line(*image,cv::Point(vec[0],vec[1]),cv::Point(vec[2],vec[3]),cv::Scalar(0,0,255),1,8);
@@ -78,7 +78,7 @@ void processImage() {
     }*/
     int num_contours=0;
     std::vector<std::vector<cv::Point> > contours;
-    cv::findContours(hough,contours,CV_RETR_EXTERNAL,CV_CHAIN_APPROX_SIMPLE);
+    cv::findContours(*binary,contours,CV_RETR_EXTERNAL,CV_CHAIN_APPROX_SIMPLE);
     for(unsigned int i=0;i<contours.size();i++) {
         double area=cv::contourArea(contours[i]);
         std::cout<<area<<std::endl;
@@ -225,7 +225,7 @@ int main(int argc,char* argv[]) {
     cv::imshow("Converted image",*cvtImage);
     cv::setMouseCallback("Converted image",mouse,(void*)cvtImage);*/
     while(true) {
-        int key=cv::waitKey((mjpg?100:0));
+        int key=cv::waitKey((mjpg?10:0));
         key&=0xFF;
         if(key=='d') {
             decorate=!decorate;
