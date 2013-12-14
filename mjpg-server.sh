@@ -22,6 +22,7 @@ do
 			echo -e "X-Timestamp: $TIME\n"
 			cat $FILE
 			echo
+			sleep 1
 #		fi
 	done
 done
