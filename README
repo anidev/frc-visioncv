@@ -1,11 +1,10 @@
 FRC Team 612 vision code that uses OpenCV, currently just for testing.
 
-To use MJPEG with the vision programs, it is necessary to add a ".mpg"
-at the end of the url if not already there. Usually a "?.mpg" or "&.mpg"
-will be ignored by the MJPEG server while used by OpenCV to select
-the ffmpeg MJPEG decoder.
+The current branch of development is the python code. The previous c++
+code can be accessed from commit 8316f0ca.
 
-The provided mjpg-server will start an MJPEG server on port 8080 using
-netcat 2 seconds after launch. It will stream all the .jpg files found
+The provided mjpg-server will start an MJPEG stream 2 seconds after launch,
+and will print all output to stdout. When piped to netcat, a rudimentary
+MJPEG streaming server can be created. It will stream all the .jpg files found
 in the current directory. The path of the url used to access the server
 is ignored, any will do.
