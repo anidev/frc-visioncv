@@ -14,3 +14,7 @@
 
 # CMake
 build/
+
+# Python
+*.pyc
+*.pyo
