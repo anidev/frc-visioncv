@@ -8,10 +8,11 @@ import numpy as np
 from pynetworktables import NetworkTable
 from mjpg import *
 import visionvars as vv
+from verbose import *
 
 mjpgURL='http://10.6.12.11/axis-cgi/mjpg/video.cgi'
-mjpgURLdebug='http://127.0.0.1:8080/video.jpg'
-#mjpgURLdebug='http://watch.sniffdoghotel.com/axis-cgi/mjpg/video.cgi?resolution=320x240'
+#mjpgURLdebug='http://127.0.0.1:8080/video.jpg'
+mjpgURLdebug='http://watch.sniffdoghotel.com/axis-cgi/mjpg/video.cgi?resolution=320x240'
 ntIP='10.6.12.2'
 ntIPdebug='127.0.0.1'
 debug=False
@@ -19,7 +20,7 @@ color=None
 table=None
 highlightColor=None
 
-Particle=namedtuple('Particle',['area','points'])
+Particle=namedtuple('Particle',['area','points','centerX','centerY'])
 
 def randColor():
     return (randint(0,255),randint(0,255),randint(0,255))
@@ -43,13 +44,12 @@ def combineImages(image1,image2):
 def binToColor(image):
     colorImage=np.expand_dims(image,2)
     colorImage=np.repeat(colorImage,3,2)
-    print(colorImage)
     return colorImage
 
 def analyzeImage(image):
     # morphology
-    kernel=cv2.getStructuringElement(cv2.MORPH_RECT,(2,2),anchor=(1,1))
-    image=cv2.morphologyEx(image,cv2.MORPH_CLOSE,kernel,iterations=9)
+    kernel=cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
+    image=cv2.morphologyEx(image,cv2.MORPH_CLOSE,kernel,iterations=4)
     imageCopy=np.copy(image)
     contours,hierarchy=cv2.findContours(imageCopy,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE);
     particles=[]
@@ -57,8 +57,7 @@ def analyzeImage(image):
         hull=cv2.convexHull(contour)
         polygon=cv2.approxPolyDP(hull,5,True)
         polygon=polygon[:,0]
-        area=cv2.contourArea(polygon)
-        particles.append(Particle(area,polygon))
+        particles.append(makeParticle(polygon))
     return image,particles
 
 def processImage(image):
@@ -68,19 +67,34 @@ def processImage(image):
     binImage=binToColor(binImage)
     image=drawParticles(image,particles)
     binImage=drawParticles(binImage,particles)
-    print("# particles: %s" % len(particles))
+    verbose("# particles: %s" % len(particles))
     combImage=combineImages(image,binImage)
+    exportParticles(particles)
     return combImage,particles
 
 def drawParticles(image,particles):
     for particle in particles:
-        print(highlightColor)
         cv2.polylines(image,np.array([particle.points]),True,highlightColor,1,1)
     return image
+
+def makeParticle(polygon):
+    area=cv2.contourArea(polygon)
+#    centerX=
+    particle=Particle(area,polygon,0,0)
+    return particle
+
+def exportParticles(particles):
+    if table==None or particles==None or len(particles)==0:
+        return None
+    p=max(particles,key=lambda x:x.area)
+    table.PutNumber('1/Area',p.area)
+    
+    return p
 
 def doMJPG(url):
 #    video=cv2.VideoCapture(url)
     mjpg=MJPG(url)
+    mjpg.start()
     while True:
 #        retval,image=video.read()
         image=mjpg.getImage()
@@ -89,6 +103,7 @@ def doMJPG(url):
         key=cv2.waitKey(30)&0xFF
         if key==27:
             break
+    mjpg.stop()
 
 def doLocal(filename):
     image=cv2.imread(filename,1)
@@ -100,9 +115,12 @@ def doLocal(filename):
             break
 
 def usage():
-    print("Usage: %s [--debug] [--blue|--green] <--mjpg|picture>" % sys.argv[0])
+    print("Usage: %s [--debug] [--verbose|--silent] [--blue|--green] <--mjpg|picture>" % sys.argv[0])
     print("")
     print("--debug: Activate debug mode")
+    print("")
+    print("--verbose: Activate verbose mode (default)")
+    print("--silent: Disable verbose mode")
     print("")
     print("")
     print("--mjpg: MJPG Axis camera streaming")
@@ -115,31 +133,38 @@ def usage():
     print("NetworkTable debug IP: %s" % ntIPdebug)
     print("")
 
-if len(sys.argv)<3:
-    usage()
-    exit(0)
-sys.argv.pop(0)
-if sys.argv[0]=='--debug':
-    debug=True
+if __name__=='__main__':
+    if len(sys.argv)<3:
+        usage()
+        exit(0)
     sys.argv.pop(0)
-if sys.argv[0]=='--blue':
-    color=vv.blue
-elif sys.argv[0]=='--green':
-    color=vv.green
-else:
-    print('No color specified')
-    exit(1)
-sys.argv.pop(0)
-highlightColor=randColor()
-NetworkTable.SetIPAddress(ntIPdebug if debug else ntIP)
-NetworkTable.SetClientMode()
-NetworkTable.Initialize()
-table=NetworkTable.GetTable('PCVision')
-if table==None:
-    print("Failed to get NetworkTable")
-    exit(1)
-if sys.argv[0]=='--mjpg':
-    doMJPG(mjpgURLdebug if debug else mjpgURL)
-    exit(0)
-else:
-    doLocal(sys.argv[0])
+    if sys.argv[0]=='--debug':
+        debug=True
+        sys.argv.pop(0)
+    if sys.argv[0]=='--verbose':
+        setVerbose(True)
+        sys.argv.pop(0)
+    elif sys.argv[0]=='--silent':
+        setVerbose(False)
+        sys.argv.pop(0)
+    if sys.argv[0]=='--blue':
+        color=vv.blue
+    elif sys.argv[0]=='--green':
+        color=vv.green
+    else:
+        print('No color specified')
+        exit(1)
+    sys.argv.pop(0)
+    highlightColor=randColor()
+    NetworkTable.SetIPAddress(ntIPdebug if debug else ntIP)
+    NetworkTable.SetClientMode()
+    NetworkTable.Initialize()
+    table=NetworkTable.GetTable('PCVision')
+    if table==None:
+        print("Failed to get NetworkTable")
+        exit(1)
+    if sys.argv[0]=='--mjpg':
+        doMJPG(mjpgURLdebug if debug else mjpgURL)
+        exit(0)
+    else:
+        doLocal(sys.argv[0])
