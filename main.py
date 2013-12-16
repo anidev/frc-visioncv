@@ -10,7 +10,8 @@ from mjpg import *
 import visionvars as vv
 
 mjpgURL='http://10.6.12.11/axis-cgi/mjpg/video.cgi'
-mjpgURLdebug='http://127.0.0.1:8080/'
+mjpgURLdebug='http://127.0.0.1:8080/video.jpg'
+#mjpgURLdebug='http://watch.sniffdoghotel.com/axis-cgi/mjpg/video.cgi?resolution=320x240'
 ntIP='10.6.12.2'
 ntIPdebug='127.0.0.1'
 debug=False
@@ -21,7 +22,7 @@ highlightColor=None
 Particle=namedtuple('Particle',['area','points'])
 
 def randColor():
-    highlightColor=(randint(0,255),randint(0,255),randint(0,255))
+    return (randint(0,255),randint(0,255),randint(0,255))
 
 def convertImage(image):
     cvtImage=cv2.cvtColor(image,cv2.cv.CV_BGR2HLS)
@@ -36,10 +37,16 @@ def combineImages(image1,image2):
     h,w=image1.shape[:2]
     comb=np.zeros((h*2,w,3),np.uint8)
     comb[:h]=image1
-    comb[h:][:w][0]=image2
+    comb[h:]=image2
     return comb
 
-def processImage(image):
+def binToColor(image):
+    colorImage=np.expand_dims(image,2)
+    colorImage=np.repeat(colorImage,3,2)
+    print(colorImage)
+    return colorImage
+
+def analyzeImage(image):
     # morphology
     kernel=cv2.getStructuringElement(cv2.MORPH_RECT,(2,2),anchor=(1,1))
     image=cv2.morphologyEx(image,cv2.MORPH_CLOSE,kernel,iterations=9)
@@ -49,39 +56,46 @@ def processImage(image):
     for contour in contours:
         hull=cv2.convexHull(contour)
         polygon=cv2.approxPolyDP(hull,5,True)
+        polygon=polygon[:,0]
         area=cv2.contourArea(polygon)
         particles.append(Particle(area,polygon))
     return image,particles
 
+def processImage(image):
+    cvtImage=convertImage(image)
+    binImage=filterImage(cvtImage)
+    binImage,particles=analyzeImage(binImage)
+    binImage=binToColor(binImage)
+    image=drawParticles(image,particles)
+    binImage=drawParticles(binImage,particles)
+    print("# particles: %s" % len(particles))
+    combImage=combineImages(image,binImage)
+    return combImage,particles
+
 def drawParticles(image,particles):
     for particle in particles:
-        cv2.polylines(image,particle.points,True,highlightColor,1,8)
+        print(highlightColor)
+        cv2.polylines(image,np.array([particle.points]),True,highlightColor,1,1)
     return image
 
 def doMJPG(url):
-    video=cv2.VideoCapture(url)
+#    video=cv2.VideoCapture(url)
+    mjpg=MJPG(url)
     while True:
-        retval,image=video.read()
-        cvtImage=convertImage(image)
-        binImage=filterImage(cvtImage)
-        binImage,particles=processImage(binImage)
-        image=drawParticles(image,particles)
-        print("# particles: %s" % len(particles))
-        cv2.imshow("Original Image",image)
-        cv2.imshow("Preview Image",binImage)
+#        retval,image=video.read()
+        image=mjpg.getImage()
+        combImage,particles=processImage(image)
+        cv2.imshow("Image",combImage)
         key=cv2.waitKey(30)&0xFF
         if key==27:
             break
 
 def doLocal(filename):
     image=cv2.imread(filename,1)
-    cvtImage=convertImage(image)
-    binImage=filterImage(cvtImage)
-    binImage,particles=processImage(binImage)
-    cv2.imshow("Original Image",image)
-    cv2.imshow("Preview Image",binImage)
+    combImage,particles=processImage(image)
+    cv2.imshow("Image",combImage)
     while True:
-        key=cv2.waitKey(0)&0xFF
+        key=cv2.waitKey(10)
         if key==27:
             break
 

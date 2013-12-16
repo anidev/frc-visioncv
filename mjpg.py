@@ -15,7 +15,7 @@ class MJPG:
             a=self.imgbytes.find('\xff\xd8')
             b=self.imgbytes.find('\xff\xd9')
             if a==-1 or b==-1:
-                self.imgbytes+=self.stream.read(16384)
+                self.imgbytes+=self.stream.read(4096)
             else:
                 break
         jpg=self.imgbytes[a:b+2]
