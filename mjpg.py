@@ -17,7 +17,11 @@ class MJPG:
 
     def __runClient(self,url):
         self.url=url
-        self.stream=urllib.urlopen(url)
+        try:
+            self.stream=urllib.urlopen(url)
+        except IOError:
+            self.startFlag.set()
+            return
         self.imgbytes=''
         self.startFlag.set()
         while not self.stopFlag.is_set():
