@@ -65,31 +65,44 @@ def processImage(image):
     binImage=filterImage(cvtImage)
     binImage,particles=analyzeImage(binImage)
     binImage=binToColor(binImage)
-    image=drawParticles(image,particles)
-    binImage=drawParticles(binImage,particles)
+    drawImage=drawParticles(image,particles)
+    drawBinImage=drawParticles(binImage,particles)
     verbose("# particles: %s" % len(particles))
-    combImage=combineImages(image,binImage)
+    combImage=combineImages(drawImage,drawBinImage)
     exportParticles(particles)
     return combImage,particles
 
 def drawParticles(image,particles):
+    drawImage=np.copy(image)
     for particle in particles:
-        cv2.polylines(image,np.array([particle.points]),True,highlightColor,1,1)
-    return image
+        cv2.polylines(drawImage,np.array([particle.points]),True,highlightColor,1,1)
+        cv2.circle(image,(particle.centerX,particle.centerY),2,highlightColor)
+    return drawImage
 
 def makeParticle(polygon):
     area=cv2.contourArea(polygon)
-#    centerX=
-    particle=Particle(area,polygon,0,0)
+    m=cv2.moments(np.array([polygon]))
+    if m['m00']==0:
+        centerX=centerY=0
+    else:
+        centerX=int(m['m10']/m['m00'])
+        centerY=int(m['m01']/m['m00'])
+    particle=Particle(area,polygon,centerX,centerY)
     return particle
 
 def exportParticles(particles):
-    if table==None or particles==None or len(particles)==0:
+    if table==None:
         return None
-    p=max(particles,key=lambda x:x.area)
-    table.PutNumber('1/Area',p.area)
-    
-    return p
+    if particles==None or len(particles)==0:
+        table.PutBoolean('1/Available',False)
+        return None
+    else:
+        p=max(particles,key=lambda x:x.area)
+        table.PutBoolean('1/Available',True)
+        table.PutNumber('1/Area',p.area)
+        table.PutNumber('1/CenterX',p.centerX)
+        table.PutNumber('1/CenterY',p.centerY)
+        return p
 
 def doMJPG(url):
 #    video=cv2.VideoCapture(url)
