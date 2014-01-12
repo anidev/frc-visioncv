@@ -13,6 +13,7 @@ class MJPG:
         self.startFlag=threading.Event()
         self.images=Queue.Queue(6)
         self.thread=threading.Thread(target=self.__runClient,args=[url])
+        self.thread.deamon=True
         self.lastImage=np.zeros((240,320,3),np.uint8)
 
     def __runClient(self,url):
