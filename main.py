@@ -11,8 +11,8 @@ import visionvars as vv
 from verbose import *
 
 mjpgURL='http://10.6.12.11/axis-cgi/mjpg/video.cgi'
-#mjpgURLdebug='http://127.0.0.1:8080/video.jpg'
-mjpgURLdebug='http://watch.sniffdoghotel.com/axis-cgi/mjpg/video.cgi?resolution=320x240'
+mjpgURLdebug='http://127.0.0.1:8080/video.jpg'
+#mjpgURLdebug='http://watch.sniffdoghotel.com/axis-cgi/mjpg/video.cgi?resolution=320x240'
 ntIP='10.6.12.2'
 ntIPdebug='127.0.0.1'
 debug=False

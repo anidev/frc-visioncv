@@ -8,3 +8,9 @@ and will print all output to stdout. When piped to netcat, a rudimentary
 MJPEG streaming server can be created. It will stream all the .jpg files found
 in the current directory. The path of the url used to access the server
 is ignored, any will do.
+
+Dependencies:
+numpy
+opencv python bindings
+robotpy
+pynetworktables
