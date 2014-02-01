@@ -9,6 +9,10 @@ from pynetworktables import NetworkTable
 from mjpg import *
 import visionvars as vv
 from verbose import *
+try:
+    import rumble
+except Error:
+    rumble=False
 
 mjpgURL='http://10.6.12.11/axis-cgi/mjpg/video.cgi'
 mjpgURLdebug='http://127.0.0.1:8080/video.jpg'
@@ -71,6 +75,7 @@ def processImage(image):
     verbose("# particles: %s" % len(particles))
     combImage=combineImages(drawImage,drawBinImage)
     exportParticles(particles)
+    doRumbling(particles)
     return combImage,particles
 
 def drawParticles(image,particles):
@@ -91,6 +96,9 @@ def makeParticle(polygon):
     particle=Particle(area,polygon,centerX,centerY)
     return particle
 
+def biggestParticle(particles):
+    return max(particles,key=lambda x:x.area)
+
 def exportParticles(particles):
     if table==None:
         return None
@@ -98,12 +106,26 @@ def exportParticles(particles):
         table.PutBoolean('1/Available',False)
         return None
     else:
-        p=max(particles,key=lambda x:x.area)
+        p=biggestParticle(particles)
         table.PutBoolean('1/Available',True)
         table.PutNumber('1/Area',p.area)
         table.PutNumber('1/CenterX',p.centerX)
         table.PutNumber('1/CenterY',p.centerY)
         return p
+
+def doRumbling(particles):
+    doRumble=False
+    def doTest():
+        if not rumble:
+            return
+        if len(particles)==0:
+            return
+        return biggestParticle(particles)
+    p=doTest()
+    if p and p.area>3000:
+        doRumble=True
+    power=doRumble*0.8
+    rumble.rumble(power,power)
 
 def doMJPG(url):
 #    video=cv2.VideoCapture(url)
