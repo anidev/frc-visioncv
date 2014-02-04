@@ -11,7 +11,7 @@ import visionvars as vv
 from verbose import *
 try:
     import rumble
-except Error:
+except Exception:
     rumble=False
 
 mjpgURL='http://10.6.12.11/axis-cgi/mjpg/video.cgi'
@@ -53,8 +53,8 @@ def binToColor(image):
 
 def analyzeImage(image):
     # morphology
-    kernel=cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
-    image=cv2.morphologyEx(image,cv2.MORPH_CLOSE,kernel,iterations=4)
+    kernel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7,7))
+    image=cv2.morphologyEx(image,cv2.MORPH_CLOSE,kernel,iterations=8)
     imageCopy=np.copy(image)
     contours,hierarchy=cv2.findContours(imageCopy,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE);
     particles=[]
@@ -66,6 +66,8 @@ def analyzeImage(image):
     return image,particles
 
 def processImage(image):
+    sizedImage=cv2.resize(image,(320,240))
+    image=sizedImage
     cvtImage=convertImage(image)
     binImage=filterImage(cvtImage)
     binImage,particles=analyzeImage(binImage)
@@ -114,18 +116,14 @@ def exportParticles(particles):
         return p
 
 def doRumbling(particles):
-    doRumble=False
-    def doTest():
-        if not rumble:
-            return
-        if len(particles)==0:
-            return
-        return biggestParticle(particles)
-    p=doTest()
+    if not rumble:
+        return
+    if len(particles)==0:
+        return
+    p=biggestParticle(particles)
     if p and p.area>3000:
-        doRumble=True
-    power=doRumble*0.8
-    rumble.rumble(power,power)
+        power=doRumble*0.8
+        rumble.rumble(power,power)
 
 def doMJPG(url):
 #    video=cv2.VideoCapture(url)
@@ -151,7 +149,7 @@ def doLocal(filename):
             break
 
 def usage():
-    print("Usage: %s [--debug] [--verbose|--silent] [--blue|--green] <--mjpg|picture>" % sys.argv[0])
+    print("Usage: %s [--debug] [--verbose|--silent] [--blue|--green|--yellow] <--mjpg|picture>" % sys.argv[0])
     print("")
     print("--debug: Activate debug mode")
     print("")
@@ -187,6 +185,8 @@ if __name__=='__main__':
         color=vv.blue
     elif sys.argv[0]=='--green':
         color=vv.green
+    elif sys.argv[0]=='--yellow':
+        color=vv.yellow
     else:
         print('No color specified')
         exit(1)
