@@ -40,7 +40,8 @@ def filterImage(image):
     return binImage
 
 def filterParticle(particle):
-    return particle.area>vv.area_min and particle.area<vv.area_max
+#    return particle.area>vv.area_min and particle.area<vv.area_max
+    return True
 
 def combineImages(image1,image2):
     h,w=image1.shape[:2]
