@@ -25,7 +25,7 @@ color=None
 table=None
 highlightColor=None
 
-Particle=namedtuple('Particle',['area','points','centerX','centerY'])
+Particle=namedtuple('Particle',['area','points','centerX']) #changed
 
 def randColor():
     return (randint(0,255),randint(0,255),randint(0,255))
@@ -38,6 +38,9 @@ def filterImage(image):
     binImage=np.zeros((len(image),len(image[0]),1),np.uint8)
     cv2.inRange(image,color[0],color[1],binImage)
     return binImage
+
+def filterParticle(particle):
+    return particle.area>vv.area_min and particle.area<vv.area_max
 
 def combineImages(image1,image2):
     h,w=image1.shape[:2]
@@ -53,16 +56,19 @@ def binToColor(image):
 
 def analyzeImage(image):
     # morphology
-    kernel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7,7))
-    image=cv2.morphologyEx(image,cv2.MORPH_CLOSE,kernel,iterations=8)
+    # change this to this year's vision later
+    kernel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(10,10)) #changed
+    image=cv2.morphologyEx(image, cv2.MORPH_CLOSE, kernel, iterations=4) #changed
     imageCopy=np.copy(image)
-    contours,hierarchy=cv2.findContours(imageCopy,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE);
+    contours,hierarchy=cv2.findContours(imageCopy, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
     particles=[]
     for contour in contours:
-        hull=cv2.convexHull(contour)
+        hull=(cv2.convexHull(contour))
         polygon=cv2.approxPolyDP(hull,5,True)
         polygon=polygon[:,0]
-        particles.append(makeParticle(polygon))
+        particle=makeParticle(polygon)
+        if filterParticle(particle):
+            particles.append(particle)
     return image,particles
 
 def processImage(image):
@@ -77,25 +83,28 @@ def processImage(image):
     verbose("# particles: %s" % len(particles))
     combImage=combineImages(drawImage,drawBinImage)
     exportParticles(particles)
-    doRumbling(particles)
+    doRumbling(particles) #change the rumbling parameters later
+    #combImage = binImage
+    #particles = None
     return combImage,particles
 
 def drawParticles(image,particles):
     drawImage=np.copy(image)
     for particle in particles:
         cv2.polylines(drawImage,np.array([particle.points]),True,highlightColor,1,1)
-        cv2.circle(image,(particle.centerX,particle.centerY),2,highlightColor)
+        #cv2.circle(image,(particle.centerX,particle.centerY),2,highlightColor) #changed
     return drawImage
 
 def makeParticle(polygon):
     area=cv2.contourArea(polygon)
     m=cv2.moments(np.array([polygon]))
     if m['m00']==0:
-        centerX=centerY=0
+        centerX=0
     else:
         centerX=int(m['m10']/m['m00'])
-        centerY=int(m['m01']/m['m00'])
-    particle=Particle(area,polygon,centerX,centerY)
+        #centerY=int(m['m01']/m['m00']) #changed
+    particle=Particle(area,polygon,centerX)
+    print 'area: %s' % area
     return particle
 
 def biggestParticle(particles):
@@ -112,7 +121,6 @@ def exportParticles(particles):
         table.PutBoolean('1/Available',True)
         table.PutNumber('1/Area',p.area)
         table.PutNumber('1/CenterX',p.centerX)
-        table.PutNumber('1/CenterY',p.centerY)
         return p
 
 def doRumbling(particles):
