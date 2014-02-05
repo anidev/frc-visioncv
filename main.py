@@ -34,7 +34,7 @@ def convertImage(image):
     cvtImage=cv2.cvtColor(image,cv2.cv.CV_BGR2HLS)
     return cvtImage
 
-def filterImage(image):
+def filterImage(image,color):
     binImage=np.zeros((len(image),len(image[0]),1),np.uint8)
     cv2.inRange(image,color[0],color[1],binImage)
     return binImage
@@ -76,7 +76,7 @@ def processImage(image):
     sizedImage=cv2.resize(image,(320,240))
     image=sizedImage
     cvtImage=convertImage(image)
-    binImage=filterImage(cvtImage)
+    binImage=filterImage(cvtImage,color)
     binImage,particles=analyzeImage(binImage)
     binImage=binToColor(binImage)
     drawImage=drawParticles(image,particles)
@@ -133,6 +133,9 @@ def doRumbling(particles):
     if p and p.area>3000:
         power=doRumble*0.8
         rumble.rumble(power,power)
+   
+def nothing(x):
+    pass
 
 def doMJPG(url):
 #    video=cv2.VideoCapture(url)
@@ -142,17 +145,39 @@ def doMJPG(url):
 #        retval,image=video.read()
         image=mjpg.getImage()
         combImage,particles=processImage(image)
-        cv2.imshow("Image",combImage)
+        cv2.imshow('image',combImage)
         key=cv2.waitKey(30)&0xFF
         if key==27:
             break
+    cv2.destroyAllWindows()
     mjpg.stop()
+
+def processImage2(image,color):
+    return processImage(image)
 
 def doLocal(filename):
     image=cv2.imread(filename,1)
     combImage,particles=processImage(image)
-    cv2.imshow("Image",combImage)
+    cv2.namedWindow('image')
+    cv2.createTrackbar("H1", 'image', 0, 255, nothing)
+    cv2.createTrackbar("H2", 'image', 255, 255, nothing)
+    cv2.createTrackbar("L1", 'image', 0, 255, nothing)
+    cv2.createTrackbar("L2", 'image', 255, 255, nothing)
+    cv2.createTrackbar("S1", 'image', 0, 255, nothing)
+    cv2.createTrackbar("S2", 'image', 255, 255, nothing)
+    #cv2.imshow('image',combImage)
     while True:
+        h1 = cv2.getTrackbarPos('H1', 'image')
+        l1 = cv2.getTrackbarPos('L1', 'image')
+        s1 = cv2.getTrackbarPos('S1', 'image')
+        
+        h2 = cv2.getTrackbarPos('H2', 'image')
+        l2 = cv2.getTrackbarPos('L2', 'image')
+        s2 = cv2.getTrackbarPos('S2', 'image')
+        
+        color = ((h1,l1,s1), (h2,l2,s2))
+        combImage, particles = processImage(image)
+        cv2.imshow('image',combImage)
         key=cv2.waitKey(10)
         if key==27:
             break
