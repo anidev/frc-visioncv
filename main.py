@@ -7,6 +7,7 @@ import cv2
 import numpy as np
 from pynetworktables import NetworkTable
 from mjpg import *
+from gui import *
 import visionvars as vv
 from verbose import *
 try:
@@ -20,10 +21,6 @@ mjpgURLdebug='http://127.0.0.1:8080/video.jpg'
 #mjpgURLdebug='http://212.24.177.174:8092/axis-cgi/mjpg/video.cgi?resolution=320x240'
 ntIP='10.6.12.2'
 ntIPdebug='127.0.0.1'
-debug=False
-color=None
-table=None
-highlightColor=None
 
 Particle=namedtuple('Particle',['area','points','centerX']) #changed
 
@@ -34,14 +31,13 @@ def convertImage(image):
     cvtImage=cv2.cvtColor(image,cv2.cv.CV_BGR2HLS)
     return cvtImage
 
-def filterImage(image,color):
+def filterImage(image):
     binImage=np.zeros((len(image),len(image[0]),1),np.uint8)
-    cv2.inRange(image,color[0],color[1],binImage)
+    cv2.inRange(image,vv.color[0],vv.color[1],binImage)
     return binImage
 
 def filterParticle(particle):
-#    return particle.area>vv.area_min and particle.area<vv.area_max
-    return True
+    return particle.area>vv.area_min and particle.area<vv.area_max
 
 def combineImages(image1,image2):
     h,w=image1.shape[:2]
@@ -58,17 +54,19 @@ def binToColor(image):
 def analyzeImage(image):
     # morphology
     # change this to this year's vision later
-    kernel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(10,10)) #changed
-    image=cv2.morphologyEx(image, cv2.MORPH_CLOSE, kernel, iterations=4) #changed
+#    kernel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(10,10)) #changed
+#    image=cv2.morphologyEx(image, cv2.MORPH_CLOSE, kernel, iterations=4) #changed
+    image=image.reshape((240,320))
     imageCopy=np.copy(image)
     contours,hierarchy=cv2.findContours(imageCopy, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
     particles=[]
     for contour in contours:
         hull=(cv2.convexHull(contour))
-        polygon=cv2.approxPolyDP(hull,5,True)
+        polygon=cv2.approxPolyDP(hull,2,True)
         polygon=polygon[:,0]
         particle=makeParticle(polygon)
         if filterParticle(particle):
+            verbose('area: %s' % particle.area)
             particles.append(particle)
     return image,particles
 
@@ -76,7 +74,7 @@ def processImage(image):
     sizedImage=cv2.resize(image,(320,240))
     image=sizedImage
     cvtImage=convertImage(image)
-    binImage=filterImage(cvtImage,color)
+    binImage=filterImage(cvtImage)
     binImage,particles=analyzeImage(binImage)
     binImage=binToColor(binImage)
     drawImage=drawParticles(image,particles)
@@ -92,8 +90,8 @@ def processImage(image):
 def drawParticles(image,particles):
     drawImage=np.copy(image)
     for particle in particles:
-        cv2.polylines(drawImage,np.array([particle.points]),True,highlightColor,1,1)
-        #cv2.circle(image,(particle.centerX,particle.centerY),2,highlightColor) #changed
+        cv2.polylines(drawImage,np.array([particle.points]),True,vv.highlightColor,1,1)
+        #cv2.circle(image,(particle.centerX,particle.centerY),2,vv.highlightColor) #changed
     return drawImage
 
 def makeParticle(polygon):
@@ -105,23 +103,22 @@ def makeParticle(polygon):
         centerX=int(m['m10']/m['m00'])
         #centerY=int(m['m01']/m['m00']) #changed
     particle=Particle(area,polygon,centerX)
-    print 'area: %s' % area
     return particle
 
 def biggestParticle(particles):
     return max(particles,key=lambda x:x.area)
 
 def exportParticles(particles):
-    if table==None:
+    if vv.table==None:
         return None
     if particles==None or len(particles)==0:
-        table.PutBoolean('1/Available',False)
+        vv.table.PutBoolean('1/Available',False)
         return None
     else:
         p=biggestParticle(particles)
-        table.PutBoolean('1/Available',True)
-        table.PutNumber('1/Area',p.area)
-        table.PutNumber('1/CenterX',p.centerX)
+        vv.table.PutBoolean('1/Available',True)
+        vv.table.PutNumber('1/Area',p.area)
+        vv.table.PutNumber('1/CenterX',p.centerX)
         return p
 
 def doRumbling(particles):
@@ -138,49 +135,27 @@ def nothing(x):
     pass
 
 def doMJPG(url):
-#    video=cv2.VideoCapture(url)
+    gui=GUI()
     mjpg=MJPG(url)
     mjpg.start()
     while True:
-#        retval,image=video.read()
+        gui.update()
         image=mjpg.getImage()
         combImage,particles=processImage(image)
-        cv2.imshow('image',combImage)
-        key=cv2.waitKey(30)&0xFF
-        if key==27:
+        if not gui.showImage(combImage):
             break
-    cv2.destroyAllWindows()
+    gui.destroy()
     mjpg.stop()
 
-def processImage2(image,color):
-    return processImage(image)
-
 def doLocal(filename):
+    gui=GUI()
     image=cv2.imread(filename,1)
-    combImage,particles=processImage(image)
-    cv2.namedWindow('image')
-    cv2.createTrackbar("H1", 'image', 0, 255, nothing)
-    cv2.createTrackbar("H2", 'image', 255, 255, nothing)
-    cv2.createTrackbar("L1", 'image', 0, 255, nothing)
-    cv2.createTrackbar("L2", 'image', 255, 255, nothing)
-    cv2.createTrackbar("S1", 'image', 0, 255, nothing)
-    cv2.createTrackbar("S2", 'image', 255, 255, nothing)
-    #cv2.imshow('image',combImage)
     while True:
-        h1 = cv2.getTrackbarPos('H1', 'image')
-        l1 = cv2.getTrackbarPos('L1', 'image')
-        s1 = cv2.getTrackbarPos('S1', 'image')
-        
-        h2 = cv2.getTrackbarPos('H2', 'image')
-        l2 = cv2.getTrackbarPos('L2', 'image')
-        s2 = cv2.getTrackbarPos('S2', 'image')
-        
-        color = ((h1,l1,s1), (h2,l2,s2))
+        gui.update()
         combImage, particles = processImage(image)
-        cv2.imshow('image',combImage)
-        key=cv2.waitKey(10)
-        if key==27:
+        if not gui.showImage(combImage):
             break
+    gui.destroy()
 
 def usage():
     print("Usage: %s [--debug] [--verbose|--silent] [--blue|--green|--yellow] <--mjpg|picture>" % sys.argv[0])
@@ -207,7 +182,7 @@ if __name__=='__main__':
         exit(0)
     sys.argv.pop(0)
     if sys.argv[0]=='--debug':
-        debug=True
+        vv.debug=True
         sys.argv.pop(0)
     if sys.argv[0]=='--verbose':
         setVerbose(True)
@@ -216,25 +191,25 @@ if __name__=='__main__':
         setVerbose(False)
         sys.argv.pop(0)
     if sys.argv[0]=='--blue':
-        color=vv.blue
+        vv.color=vv.blue
     elif sys.argv[0]=='--green':
-        color=vv.green
+        vv.color=vv.green
     elif sys.argv[0]=='--yellow':
-        color=vv.yellow
+        vv.color=vv.yellow
     else:
         print('No color specified')
         exit(1)
     sys.argv.pop(0)
-    highlightColor=randColor()
-    NetworkTable.SetIPAddress(ntIPdebug if debug else ntIP)
+    vv.highlightColor=randColor()
+    NetworkTable.SetIPAddress(ntIPdebug if vv.debug else ntIP)
     NetworkTable.SetClientMode()
     NetworkTable.Initialize()
-    table=NetworkTable.GetTable('PCVision')
-    if table==None:
+    vv.table=NetworkTable.GetTable('PCVision')
+    if vv.table==None:
         print("Failed to get NetworkTable")
         exit(1)
     if sys.argv[0]=='--mjpg':
-        doMJPG(mjpgURLdebug if debug else mjpgURL)
+        doMJPG(mjpgURLdebug if vv.debug else mjpgURL)
         exit(0)
     else:
         doLocal(sys.argv[0])
