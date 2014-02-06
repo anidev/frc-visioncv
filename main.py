@@ -41,9 +41,9 @@ def filterParticle(particle):
 
 def combineImages(image1,image2):
     h,w=image1.shape[:2]
-    comb=np.zeros((h*2,w,3),np.uint8)
-    comb[:h]=image1
-    comb[h:]=image2
+    comb=np.zeros((h,w*2,3),np.uint8)
+    comb[:,:w]=image1
+    comb[:,w:]=image2
     return comb
 
 def binToColor(image):
