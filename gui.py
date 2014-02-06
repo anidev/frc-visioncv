@@ -1,3 +1,4 @@
+import time
 import cv2
 import visionvars as vv
 
@@ -27,11 +28,15 @@ class GUI:
         vv.color=(tuple(newval[0]),tuple(newval[1]))
 
     def showImage(self,image):
-        cv2.imshow(self.title,image)
-        key=cv2.waitKey(30)
-        if key==27:
-            return False
-        return True
+        if vv.guiEnabled:
+            cv2.imshow(self.title,image)
+            key=cv2.waitKey(30)
+            if key==27:
+                return False
+            return True
+        else:
+            time.sleep(0.3)
+            return True
 
     def destroy(self):
         cv2.destroyAllWindows()

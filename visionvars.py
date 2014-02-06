@@ -9,3 +9,4 @@ debug=False
 color=None
 table=None
 highlightColor=None
+guiEnabled=True

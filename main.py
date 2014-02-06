@@ -158,9 +158,12 @@ def doLocal(filename):
     gui.destroy()
 
 def usage():
-    print("Usage: %s [--debug] [--verbose|--silent] [--blue|--green|--yellow] <--mjpg|picture>" % sys.argv[0])
+    print("Usage: %s [--debug] [--gui|--nogui] [--verbose|--silent] [--blue|--green|--yellow] <--mjpg|picture>" % sys.argv[0])
     print("")
     print("--debug: Activate debug mode")
+    print("")
+    print("--gui: Enable the gui (default)")
+    print("--nogui: Disable the gui")
     print("")
     print("--verbose: Activate verbose mode (default)")
     print("--silent: Disable verbose mode")
@@ -183,6 +186,12 @@ if __name__=='__main__':
     sys.argv.pop(0)
     if sys.argv[0]=='--debug':
         vv.debug=True
+        sys.argv.pop(0)
+    if sys.argv[0]=='--gui':
+        vv.guiEnabled=True
+        sys.argv.pop(0)
+    elif sys.argv[0]=='--nogui':
+        vv.guiEnabled=False
         sys.argv.pop(0)
     if sys.argv[0]=='--verbose':
         setVerbose(True)
