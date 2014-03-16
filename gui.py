@@ -21,6 +21,8 @@ class GUI:
             cv2.setTrackbarPos(self.names[1][i], self.title, vv.color[1][i])
 
     def update(self):
+        if not vv.debug:
+            return
         newval=[[0,0,0],[0,0,0]]
         for i,names in enumerate(self.names):
             for j,name in enumerate(names):
