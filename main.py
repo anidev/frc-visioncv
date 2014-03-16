@@ -21,8 +21,10 @@ mjpgURLdebug='http://127.0.0.1:8080/video.jpg'
 #mjpgURLdebug='http://212.24.177.174:8092/axis-cgi/mjpg/video.cgi?resolution=320x240'
 ntIP='10.6.12.2'
 ntIPdebug='127.0.0.1'
+imgsize=(240,320)
 
 Particle=namedtuple('Particle',['area','points','centerX']) #changed
+HotGoal=type('HotGoal',(),{'LEFT':-1,'RIGHT':1,'NONE':0})
 
 def randColor():
     return (randint(0,255),randint(0,255),randint(0,255))
@@ -56,7 +58,7 @@ def analyzeImage(image):
     # change this to this year's vision later
 #    kernel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(10,10)) #changed
 #    image=cv2.morphologyEx(image, cv2.MORPH_CLOSE, kernel, iterations=4) #changed
-    image=image.reshape((240,320))
+    image=image.reshape(imgsize)
     imageCopy=np.copy(image)
     contours,hierarchy=cv2.findContours(imageCopy, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
     particles=[]
@@ -66,7 +68,6 @@ def analyzeImage(image):
         polygon=polygon[:,0]
         particle=makeParticle(polygon)
         if filterParticle(particle):
-            verbose('area: %s' % particle.area)
             particles.append(particle)
     return image,particles
 
@@ -81,13 +82,15 @@ def processImage(image):
     drawBinImage=drawParticles(binImage,particles)
     verbose("# particles: %s" % len(particles))
     combImage=combineImages(drawImage,drawBinImage)
-    exportParticles(particles)
+    goal=determineHotGoal(particles)
+    exportStuff(particles,goal)
     doRumbling(particles) #change the rumbling parameters later
     #combImage = binImage
     #particles = None
     return combImage,particles
 
 def drawParticles(image,particles):
+    particles=sortParticles(particles)[:2]
     drawImage=np.copy(image)
     for particle in particles:
         cv2.polylines(drawImage,np.array([particle.points]),True,vv.highlightColor,1,1)
@@ -105,28 +108,53 @@ def makeParticle(polygon):
     particle=Particle(area,polygon,centerX)
     return particle
 
-def biggestParticle(particles):
-    return max(particles,key=lambda x:x.area)
+def sortParticles(particles): # biggest to smallest
+    return sorted(particles,key=lambda x:x.area,reverse=True)
 
-def exportParticles(particles):
+def exportStuff(particles,goal):
     if vv.table==None:
-        return None
+        return
     if particles==None or len(particles)==0:
         vv.table.PutBoolean('1/Available',False)
-        return None
     else:
-        p=biggestParticle(particles)
+        p=sortParticles(particles)[0]
         vv.table.PutBoolean('1/Available',True)
         vv.table.PutNumber('1/Area',p.area)
         vv.table.PutNumber('1/CenterX',p.centerX)
-        return p
+    if goal==None:
+        goal=HotGoal.NONE
+    vv.table.PutNumber('HotGoal',goal)
+
+def determineHotGoal(particles):
+    # how it works:
+    # divide image into half vertically
+    # get two biggest particles
+    # if they are in opposite halves, near goal is not hot
+    # if they are in same half, near goal is hot
+    pSorted=sortParticles(particles)[:2]
+    if len(pSorted)<2:
+        return HotGoal.NONE
+    leftHalf=rightHalf=False
+    half=imgsize[1]/2
+    for p in pSorted:
+        print p.centerX
+        if p.centerX>half:
+            rightHalf=True
+        else:
+            leftHalf=True
+    if leftHalf and not rightHalf:
+        return HotGoal.LEFT
+    elif rightHalf and not leftHalf:
+        return HotGoal.RIGHT
+    else:
+        return HotGoal.NONE
 
 def doRumbling(particles):
     if not rumble:
         return
     if len(particles)==0:
         return
-    p=biggestParticle(particles)
+    p=sortParticles(particles)[0]
     if p and p.area>3000:
         power=doRumble*0.8
         rumble.rumble(power,power)
