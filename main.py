@@ -134,18 +134,13 @@ def determineHotGoal(particles):
     pSorted=sortParticles(particles)[:2]
     if len(pSorted)<2:
         return HotGoal.NONE
-    leftHalf=rightHalf=False
-    half=imgsize[1]/2
-    for p in pSorted:
-        print p.centerX
-        if p.centerX>half:
-            rightHalf=True
+    diffX=pSorted[0].centerX-pSorted[1].centerX
+    avgX=diffX/2
+    if abs(diffX)<(imgsize[1]/3):
+        if avgX>0:
+            return HotGoal.RIGHT
         else:
-            leftHalf=True
-    if leftHalf and not rightHalf:
-        return HotGoal.LEFT
-    elif rightHalf and not leftHalf:
-        return HotGoal.RIGHT
+            return HotGoal.LEFT
     else:
         return HotGoal.NONE
 
