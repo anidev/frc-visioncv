@@ -9,7 +9,7 @@ echo "Pragma: no-cache"
 echo -e "Content-Type: multipart/x-mixed-replace; boundary=ASDFBOUNDARY\n"
 while [ true ]
 do
-	for FILE in `find -maxdepth 1 -type f -name "*.jpg"`
+	for FILE in `find -L -maxdepth 1 -type f -name "*.jpg"`
 	do
 		MIME=`file --mime "$FILE" | awk '{print $2}' | sed 's/;//'`
 		LENGTH=`du -b "$FILE" | awk '{print $1}'`
