@@ -84,7 +84,7 @@ def processImage(image):
     combImage=combineImages(drawImage,drawBinImage)
     goal=determineHotGoal(particles)
     exportStuff(particles,goal)
-    doRumbling(particles) #change the rumbling parameters later
+    #doRumbling(particles) #change the rumbling parameters later
     #combImage = binImage
     #particles = None
     return combImage,particles
@@ -124,6 +124,7 @@ def exportStuff(particles,goal):
     if goal==None:
         goal=HotGoal.NONE
     vv.table.PutNumber('HotGoal',goal)
+    print goal
 
 def determineHotGoal(particles):
     # how it works:
@@ -151,9 +152,11 @@ def doRumbling(particles):
         return
     p=sortParticles(particles)[0]
     if p and p.area>3000:
-        power=doRumble*0.8
+        power=0.8
         rumble.rumble(power,power)
-   
+    else:
+        rumble.rumble(0,0)
+
 def nothing(x):
     pass
 
