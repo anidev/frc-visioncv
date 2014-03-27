@@ -25,6 +25,7 @@ imgsize=(240,320)
 
 Particle=namedtuple('Particle',['area','points','centerX']) #changed
 HotGoal=type('HotGoal',(),{'LEFT':-1,'RIGHT':1,'NONE':0})
+goalTyp=type('goalTyp',(),{'CLOSE':True,'FAR':False})
 
 def randColor():
     return (randint(0,255),randint(0,255),randint(0,255))
@@ -84,7 +85,7 @@ def processImage(image):
     combImage=combineImages(drawImage,drawBinImage)
     goal=determineHotGoal(particles)
     exportStuff(particles,goal)
-    doRumbling(particles) #change the rumbling parameters later
+    #doRumbling(particles) #change the rumbling parameters later
     #combImage = binImage
     #particles = None
     return combImage,particles
@@ -122,8 +123,9 @@ def exportStuff(particles,goal):
         vv.table.PutNumber('1/Area',p.area)
         vv.table.PutNumber('1/CenterX',p.centerX)
     if goal==None:
-        goal=HotGoal.NONE
-    vv.table.PutNumber('HotGoal',goal)
+        goal=goalTyp.FAR
+    vv.table.PutBoolean'1/isClose',goal)
+    print goal
 
 def determineHotGoal(particles):
     # how it works:
@@ -137,12 +139,9 @@ def determineHotGoal(particles):
     diffX=pSorted[0].centerX-pSorted[1].centerX
     avgX=diffX/2
     if abs(diffX)<(imgsize[1]/3):
-        if avgX>0:
-            return HotGoal.RIGHT
-        else:
-            return HotGoal.LEFT
+        return goalTyp.CLOSE
     else:
-        return HotGoal.NONE
+        return goalTyp.FAR
 
 def doRumbling(particles):
     if not rumble:
@@ -151,9 +150,11 @@ def doRumbling(particles):
         return
     p=sortParticles(particles)[0]
     if p and p.area>3000:
-        power=doRumble*0.8
+        power=0.8
         rumble.rumble(power,power)
-   
+    else:
+        rumble.rumble(0,0)
+
 def nothing(x):
     pass
 
