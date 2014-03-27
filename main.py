@@ -124,7 +124,7 @@ def exportStuff(particles,goal):
         vv.table.PutNumber('1/CenterX',p.centerX)
     if goal==None:
         goal=goalTyp.FAR
-    vv.table.PutBoolean'1/isClose',goal)
+    vv.table.PutBoolean('1/isClose',goal)
     print goal
 
 def determineHotGoal(particles):

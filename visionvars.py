@@ -1,6 +1,6 @@
 colortype='HLS'
 blue=((0,10,235),(96,255,255))
-green=((0,10,235),(80,255,255)) # apparently same as blue...
+green=((0,10,235),(96,255,255)) # apparently same as blue...
 yellow=((0,87,0),(255,255,255))
 
 area_min=5
